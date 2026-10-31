@@ -1,87 +1,144 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Group MoMo Payment Tracker</title>
-<style>
-*{box-sizing:border-box}
-body{font-family:Arial,sans-serif;background:#f0f4f8;margin:0;padding:20px;color:#1e293b}
-.container{max-width:500px;margin:auto}
-.header{background:#008f65;color:white;padding:25px;text-align:center;border-radius:15px}
-.card{background:white;padding:20px;margin:20px 0;border-radius:12px}
-label{display:block;font-weight:bold;margin:15px 0 8px}
-input{width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:8px}
-button{width:100%;padding:13px;margin-top:15px;border:0;border-radius:8px;background:#008f65;color:white;font-size:16px;font-weight:bold}
-.member{padding:15px 0;border-bottom:1px solid #ddd;overflow-wrap:anywhere}
-.pending{color:#b45309;font-weight:bold}
-.paid{color:#008f65;font-weight:bold}
-.small{font-size:12px;color:#64748b;line-height:1.5}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Group MoMo Tracker</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f3f5f7;
+      padding: 20px;
+      margin: 0;
+    }
+    .container {
+      max-width: 500px;
+      margin: 30px auto;
+      background: white;
+      padding: 22px;
+      border-radius: 12px;
+    }
+    h1 { text-align: center; }
+    input, button {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 13px;
+      margin: 9px 0;
+      font-size: 16px;
+    }
+    button {
+      background: #087d50;
+      color: white;
+      border: 0;
+      border-radius: 6px;
+    }
+    .payment {
+      background: #f1f5f3;
+      padding: 12px;
+      margin: 10px 0;
+      border-radius: 7px;
+      overflow-wrap: anywhere;
+    }
+    #message { text-align: center; }
+  </style>
 </head>
 <body>
-<div class="container">
-<div class="header">
-<h1>💰 Group MoMo Tracker</h1>
-<p>Submit your payment details</p>
-</div>
-<div class="card">
-<h2>Submit Payment</h2>
-<form id="paymentForm">
-<label for="name">Full Name</label>
-<input id="name" required placeholder="Enter your name">
-<label for="reference">MoMo Transaction Reference</label>
-<input id="reference" required placeholder="Enter transaction reference">
-<button type="submit">Submit Payment</button>
-</form>
-<p class="small">Payments remain pending until the administrator verifies receipt of the money.</p>
-</div>
-<div class="card">
-<h2>Members Payment List</h2>
-<p>Total submissions: <strong id="total">0</strong></p>
-<p>Confirmed payments: <strong id="paidCount">0</strong></p>
-<div id="members">No submissions yet.</div>
-</div>
-</div>
-<script>
-const KEY="group-momo-submissions";
-let members=JSON.parse(localStorage.getItem(KEY)||"[]");
-const form=document.getElementById("paymentForm");
-function render(){
-const list=document.getElementById("members");
-list.replaceChildren();
-let paid=0;
-members.forEach((m,i)=>{
-if(m.status==="Paid")paid++;
-const row=document.createElement("div");
-row.className="member";
-const name=document.createElement("h3");
-name.textContent=(i+1)+". "+m.name;
-const ref=document.createElement("p");
-ref.textContent="Reference: "+m.reference;
-const status=document.createElement("p");
-status.className=m.status==="Paid"?"paid":"pending";
-status.textContent="Status: "+m.status;
-row.append(name,ref,status);
-list.append(row);
-});
-if(!members.length)list.textContent="No submissions yet.";
-document.getElementById("total").textContent=members.length;
-document.getElementById("paidCount").textContent=paid;
-}
-form.addEventListener("submit",e=>{
-e.preventDefault();
-members.push({
-name:document.getElementById("name").value.trim(),
-reference:document.getElementById("reference").value.trim(),
-status:"Pending"
-});
-localStorage.setItem(KEY,JSON.stringify(members));
-form.reset();
-render();
-alert("Submission saved on this device.");
-});
-render();
-</script>
+  <div class="container">
+    <h1>💰 Group MoMo Tracker</h1>
+
+    <form id="paymentForm">
+      <input id="name" placeholder="Full Name" required>
+      <input id="reference"
+        placeholder="MoMo Transaction Reference" required>
+      <button type="submit">Submit Payment</button>
+    </form>
+
+    <p id="message"></p>
+
+    <h2>Members Payment List</h2>
+    <div id="payments">Loading payments...</div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const supabaseUrl =
+      "https://puatrpgwhwbbvuinkypm.supabase.co";
+
+    const supabaseKey =
+      "sb_publishable_ieAgCN7gjrGdxVTHNMrtfQ_gt2Mrn3X";
+
+    const db = window.supabase.createClient(
+      supabaseUrl,
+      supabaseKey
+    );
+
+    const form = document.getElementById("paymentForm");
+    const message = document.getElementById("message");
+    const paymentList = document.getElementById("payments");
+
+    async function loadPayments() {
+      const { data, error } = await db
+        .from("payments")
+        .select("*")
+        .order("id", { ascending: false });
+
+      if (error) {
+        paymentList.textContent = "Could not load payments.";
+        return;
+      }
+
+      paymentList.replaceChildren();
+
+      data.forEach(payment => {
+        const item = document.createElement("div");
+        item.className = "payment";
+
+        const name = document.createElement("strong");
+        name.textContent = payment.full_name;
+
+        const reference = document.createElement("p");
+        reference.textContent =
+          "Reference: " + payment.transaction_reference;
+
+        const status = document.createElement("p");
+        status.textContent = "Status: " + payment.status;
+
+        item.append(name, reference, status);
+        paymentList.appendChild(item);
+      });
+
+      if (data.length === 0) {
+        paymentList.textContent = "No payments submitted yet.";
+      }
+    }
+
+    form.addEventListener("submit", async function(event) {
+      event.preventDefault();
+
+      const fullName = document.getElementById("name").value.trim();
+      const reference =
+        document.getElementById("reference").value.trim();
+
+      message.textContent = "Submitting...";
+
+      const { error } = await db
+        .from("payments")
+        .insert([{
+          full_name: fullName,
+          transaction_reference: reference
+        }]);
+
+      if (error) {
+        message.textContent = "Submission failed. Please try again.";
+        return;
+      }
+
+      message.textContent = "Payment submitted successfully!";
+      form.reset();
+      loadPayments();
+    });
+
+    loadPayments();
+  </script>
 </body>
 </html>
