@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Group MoMo Payment Tracker</title>
+<style>
+*{box-sizing:border-box}
+body{font-family:Arial,sans-serif;background:#f0f4f8;margin:0;padding:20px;color:#1e293b}
+.container{max-width:500px;margin:auto}
+.header{background:#008f65;color:white;padding:25px;text-align:center;border-radius:15px}
+.card{background:white;padding:20px;margin:20px 0;border-radius:12px}
+label{display:block;font-weight:bold;margin:15px 0 8px}
+input{width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:8px}
+button{width:100%;padding:13px;margin-top:15px;border:0;border-radius:8px;background:#008f65;color:white;font-size:16px;font-weight:bold}
+.member{padding:15px 0;border-bottom:1px solid #ddd;overflow-wrap:anywhere}
+.pending{color:#b45309;font-weight:bold}
+.paid{color:#008f65;font-weight:bold}
+.small{font-size:12px;color:#64748b;line-height:1.5}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+<h1>💰 Group MoMo Tracker</h1>
+<p>Submit your payment details</p>
+</div>
+<div class="card">
+<h2>Submit Payment</h2>
+<form id="paymentForm">
+<label for="name">Full Name</label>
+<input id="name" required placeholder="Enter your name">
+<label for="reference">MoMo Transaction Reference</label>
+<input id="reference" required placeholder="Enter transaction reference">
+<button type="submit">Submit Payment</button>
+</form>
+<p class="small">Payments remain pending until the administrator verifies receipt of the money.</p>
+</div>
+<div class="card">
+<h2>Members Payment List</h2>
+<p>Total submissions: <strong id="total">0</strong></p>
+<p>Confirmed payments: <strong id="paidCount">0</strong></p>
+<div id="members">No submissions yet.</div>
+</div>
+</div>
+<script>
+const KEY="group-momo-submissions";
+let members=JSON.parse(localStorage.getItem(KEY)||"[]");
+const form=document.getElementById("paymentForm");
+function render(){
+const list=document.getElementById("members");
+list.replaceChildren();
+let paid=0;
+members.forEach((m,i)=>{
+if(m.status==="Paid")paid++;
+const row=document.createElement("div");
+row.className="member";
+const name=document.createElement("h3");
+name.textContent=(i+1)+". "+m.name;
+const ref=document.createElement("p");
+ref.textContent="Reference: "+m.reference;
+const status=document.createElement("p");
+status.className=m.status==="Paid"?"paid":"pending";
+status.textContent="Status: "+m.status;
+row.append(name,ref,status);
+list.append(row);
+});
+if(!members.length)list.textContent="No submissions yet.";
+document.getElementById("total").textContent=members.length;
+document.getElementById("paidCount").textContent=paid;
+}
+form.addEventListener("submit",e=>{
+e.preventDefault();
+members.push({
+name:document.getElementById("name").value.trim(),
+reference:document.getElementById("reference").value.trim(),
+status:"Pending"
+});
+localStorage.setItem(KEY,JSON.stringify(members));
+form.reset();
+render();
+alert("Submission saved on this device.");
+});
+render();
+</script>
+</body>
+</html>
